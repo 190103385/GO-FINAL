@@ -44,10 +44,12 @@ func main() {
 	fmt.Println("Connection established")
 
 	//Handlers
-	http.HandleFunc("/register", Register)
-	http.HandleFunc("/login", Login)
-	http.HandleFunc("/home", Home)
-	http.HandleFunc("/refresh", Refresh)
+	http.HandleFunc("/register", register)
+	http.HandleFunc("/login", login)
+	http.HandleFunc("/home", home)
+	http.HandleFunc("/refresh", refresh)
+	http.HandleFunc("/verifyEmail", verifyEmail)
+	http.HandleFunc("/changePass", changePassword)
 
 	//Serve port 8080
 	log.Fatal(http.ListenAndServe(":8080", nil))
