@@ -22,21 +22,25 @@ type Claims struct {
 }
 
 
+//Login handler
 func Login(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Login"))
 }
 
 
+//Register handler
 func Register(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Register"))
 }
 
 
+//Refresh token handler
 func Refresh(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Refresh"))
 }
 
 
+//Home page handler
 func Home(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Home"))
 }
