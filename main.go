@@ -17,12 +17,6 @@ const(
 	dbname   = "go_final"
 )
 
-type User struct {
-	Id       int
-	Username string
-	Password string
-}
-
 func main() {
 	//DB connection establishing
 	psqlconn := fmt.Sprintf("host=%s port=%d user=%s "+
