@@ -171,7 +171,68 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 //Refresh token handler
 func Refresh(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Refresh"))
+	//Getting cookie from request
+	c, err := r.Cookie("token")
+
+	if err != nil {
+		if err == http.ErrNoCookie {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//Getting token string
+	tknStr := c.Value
+
+	//Creating claims object
+	claims := &Claims{}
+
+	tkn, err := jwt.ParseWithClaims(tknStr, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if !tkn.Valid {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	//Can't refresh the token until the condition is met
+	if time.Unix(claims.ExpiresAt, 0).Sub(time.Now()) > 10*time.Second {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//Adding additional time to expiration time
+	expirationTime := time.Now().Add(15 * time.Second)
+
+	//Updating expiration time
+	claims.ExpiresAt = expirationTime.Unix()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, err := token.SignedString(jwtKey)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	//Setting the cookie with new expiration time
+	http.SetCookie(w, &http.Cookie{
+		Name:    "token",
+		Value:   tokenString,
+		Expires: expirationTime,
+	})
 }
 
 
