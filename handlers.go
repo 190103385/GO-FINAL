@@ -177,6 +177,7 @@ func Refresh(w http.ResponseWriter, r *http.Request) {
 
 //Home page handler
 func Home(w http.ResponseWriter, r *http.Request) {
+	//Getting cookie from request
 	cookie, err := r.Cookie("token")
 	
 	if(err != nil) {
@@ -188,7 +189,10 @@ func Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//Getting token string
 	tokenStr := cookie.Value
+
+	//Creating claims var
 	claims := &Claims{}
 
 	tkn, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
@@ -209,5 +213,6 @@ func Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//Hurray, we reached the home page!
 	w.Write([]byte(fmt.Sprintf("Hello %s", claims.Username)))
 }
