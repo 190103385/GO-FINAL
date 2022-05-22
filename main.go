@@ -9,6 +9,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+//DB credentials
 const(
 	host     = "localhost"
 	port     =  5432
