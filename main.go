@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"net/http"
 
 	_ "github.com/lib/pq"
 )
@@ -42,16 +44,12 @@ func main() {
 
 	fmt.Println("Connection established")
 
-	//Checking by retrieving record from "users" table
-	stmt := "SELECT username FROM users WHERE id = $1"
-	row := db.QueryRow(stmt, 8)
+	//Handlers
+	http.HandleFunc("/register", Register)
+	http.HandleFunc("/login", Login)
+	http.HandleFunc("/home", Home)
+	http.HandleFunc("/refresh", Refresh)
 
-	var username string
-
-	err = row.Scan(&username)
-	if err != nil {
-		fmt.Println("Couldn't get the user")
-	}
-
-	fmt.Println(username)
+	//Serve port 8080
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
