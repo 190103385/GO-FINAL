@@ -4,12 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/mail"
 	"net/smtp"
 	"time"
 
-	"github.com/d-vignesh/go-jwt-auth/utils"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -19,9 +19,14 @@ var jwtKey = []byte("secret_key")
 
 //User credential's type
 type Credentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
+	Username 		 string `json:"username"`
+	Password 		 string `json:"password"`
+	Email    		 string `json:"email"`
+}
+
+type VerificationCredentials struct {
+	Username 		 string `json:"username"`
+	VerificationCode string `json:"verificationCode"`
 }
 
 //Claims
@@ -32,7 +37,7 @@ type Claims struct {
 
 
 //Login handler
-func Login(w http.ResponseWriter, r *http.Request) {
+func login(w http.ResponseWriter, r *http.Request) {
 	var creds Credentials
 
 	//Decode request's body into creds var
@@ -98,12 +103,12 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		})
 
 	//Hurray, login succes!
-	fmt.Fprintf(w, "Login auth success")
+	w.Write([]byte("Login auth success"))
 }
 
 
 //Register handler
-func Register(w http.ResponseWriter, r *http.Request) {
+func register(w http.ResponseWriter, r *http.Request) {
 	//Creating credentials's var
 	var creds Credentials
 
@@ -144,13 +149,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("Email is valid")
-
 	//Random verification code
-	verificationCode := utils.GenerateRandomString(8)
+	verificationCode := generateVerificationCode(8)
 
-	fmt.Println("Verification Code: " + verificationCode)
-
+	//Sending emaul with verification code to user email
 	err = sendEmailTo(email, verificationCode)
 	
 	if err != nil {
@@ -169,7 +171,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	//SQL statement for inserting new record
 	var insertStmt *sql.Stmt
-	insertStmt, err = db.Prepare("INSERT INTO users (username, password, email) VALUES ($1, $2, $3);")
+	insertStmt, err = db.Prepare("INSERT INTO users (username, password, email, verification_code) VALUES ($1, $2, $3, $4);")
 	
 	if err != nil {
 		fmt.Println("Error preparing statement, err: ", err)
@@ -180,7 +182,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	var result sql.Result
 
-	result, err = insertStmt.Exec(username, hash, email)
+	result, err = insertStmt.Exec(username, hash, email, verificationCode)
 	rowsAff, _ := result.RowsAffected()
 
 	fmt.Println("Rows affected: ", rowsAff)
@@ -197,7 +199,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 
 //Refresh token handler
-func Refresh(w http.ResponseWriter, r *http.Request) {
+func refresh(w http.ResponseWriter, r *http.Request) {
 	//Getting cookie from request
 	c, err := r.Cookie("token")
 
@@ -264,7 +266,7 @@ func Refresh(w http.ResponseWriter, r *http.Request) {
 
 
 //Home page handler
-func Home(w http.ResponseWriter, r *http.Request) {
+func home(w http.ResponseWriter, r *http.Request) {
 	//Getting cookie from request
 	cookie, err := r.Cookie("token")
 	
@@ -305,6 +307,59 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("Hello %s", claims.Username)))
 }
 
+
+//Email verification handler
+func verifyEmail(w http.ResponseWriter, r *http.Request) {
+	var creds VerificationCredentials
+
+	//Decode request's body into creds var
+	err := json.NewDecoder(r.Body).Decode(&creds)
+
+	//Getting username and verification code from request
+	username := creds.Username
+	verificationCode := creds.VerificationCode
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//Getting verification code from db using username
+	var expVerificationCode string
+	stmt := "SELECT verification_code FROM users WHERE username = $1"
+	row := db.QueryRow(stmt, username)
+	err = row.Scan(&expVerificationCode)
+
+	if err != nil {
+		fmt.Printf("No such user: %s\n", username)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if(verificationCode != expVerificationCode) {
+		fmt.Println("Codes doesn't match")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	stmt = "UPDATE users SET is_valid = $1 WHERE username = $2"
+	_, err = db.Exec(stmt, true, username)
+	
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	//Hurray, email is verified!
+	w.Write([]byte("Email is verified"))
+}
+
+
+//Change password handler
+func changePassword(w http.ResponseWriter, r *http.Request) {
+	
+}
+
 func isValidEmail(email string) bool {
 	_, err := mail.ParseAddress(email)
 
@@ -336,4 +391,14 @@ func sendEmailTo(to string, msg string) error {
 	}
 
 	return nil
+}
+
+func generateVerificationCode(n int) string {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+    b := make([]rune, n)
+    for i := range b {
+        b[i] = letters[rand.Intn(len(letters))]
+    }
+    return string(b)
 }
