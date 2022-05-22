@@ -19,9 +19,9 @@ var jwtKey = []byte("secret_key")
 
 //User credential's type
 type Credentials struct {
-	Username 		 string `json:"username"`
-	Password 		 string `json:"password"`
-	Email    		 string `json:"email"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
 }
 
 type VerificationCredentials struct {
