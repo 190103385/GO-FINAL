@@ -18,13 +18,17 @@ const(
 	dbname   = "go_final"
 )
 
+var db *sql.DB
+
 func main() {
 	//DB connection establishing
 	psqlconn := fmt.Sprintf("host=%s port=%d user=%s "+
     "password=%s dbname=%s sslmode=disable",
     host, port, user, password, dbname)
 
-	db, err := sql.Open("postgres", psqlconn)
+	var err error
+
+	db, err = sql.Open("postgres", psqlconn)
 	
 	if err != nil {
   		panic(err)
