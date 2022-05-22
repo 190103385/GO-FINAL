@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/mail"
+	"net/smtp"
 	"time"
 
+	"github.com/d-vignesh/go-jwt-auth/utils"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -18,6 +21,7 @@ var jwtKey = []byte("secret_key")
 type Credentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Email    string `json:"email"`
 }
 
 //Claims
@@ -111,9 +115,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Getting username and password from request
+	//Getting username, password and email from request
 	username := creds.Username
 	password := creds.Password
+	email    := creds.Email
 
 	//Checking if username already exists
 	
@@ -132,9 +137,31 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//Checking if email is valid
+	if(!isValidEmail(email)) {
+		fmt.Println("Email is invalid")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("Email is valid")
+
+	//Random verification code
+	verificationCode := utils.GenerateRandomString(8)
+
+	fmt.Println("Verification Code: " + verificationCode)
+
+	err = sendEmailTo(email, verificationCode)
+	
+	if err != nil {
+		fmt.Println("Couldn't send verification code")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	//Create hash from password
 	var hash []byte
-	hash,err = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -142,7 +169,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	//SQL statement for inserting new record
 	var insertStmt *sql.Stmt
-	insertStmt, err = db.Prepare("INSERT INTO users (username, password) VALUES ($1, $2);")
+	insertStmt, err = db.Prepare("INSERT INTO users (username, password, email) VALUES ($1, $2, $3);")
 	
 	if err != nil {
 		fmt.Println("Error preparing statement, err: ", err)
@@ -153,7 +180,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	var result sql.Result
 
-	result, err = insertStmt.Exec(username, hash)
+	result, err = insertStmt.Exec(username, hash, email)
 	rowsAff, _ := result.RowsAffected()
 
 	fmt.Println("Rows affected: ", rowsAff)
@@ -276,4 +303,37 @@ func Home(w http.ResponseWriter, r *http.Request) {
 
 	//Hurray, we reached the home page!
 	w.Write([]byte(fmt.Sprintf("Hello %s", claims.Username)))
+}
+
+func isValidEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+
+    return err == nil	
+}
+
+func sendEmailTo(to string, msg string) error {
+	from := "octodad48@gmail.com"
+	password := "SPECIALFORGOLANG1"
+
+	receiver := []string {
+		to,
+	}
+
+	message := []byte(msg)
+  
+	// smtp server configuration.
+	smtpHost := "smtp.gmail.com"
+	smtpPort := "587"
+
+	// Authentication
+	auth := smtp.PlainAuth("", from, password, smtpHost)
+
+	// Sending email.
+	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, receiver, message)
+	if err != nil {
+	  fmt.Println(err)
+	  return err
+	}
+
+	return nil
 }
