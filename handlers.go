@@ -159,7 +159,8 @@ func register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Random verification code
-	verificationCode := generateVerificationCode(8)
+	var verificationCode string
+	verificationCode = generateVerificationCode(8)
 
 	//Sending emaul with verification code to user email
 	err = sendEmailTo(email, verificationCode)
@@ -451,7 +452,7 @@ func sendEmailTo(to string, msg string) error {
 }
 
 func generateVerificationCode(n int) string {
-	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*")
 
     b := make([]rune, n)
     for i := range b {
