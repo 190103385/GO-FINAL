@@ -29,6 +29,12 @@ type VerificationCredentials struct {
 	VerificationCode string `json:"verificationCode"`
 }
 
+type PasswordChangeCredentials struct {
+	Username 	string `json:"username"`
+	Password 	string `json:"password"`
+	NewPassword string `json:"newPassword"`
+}
+
 //Claims
 type Claims struct {
 	Username string `json:"username"`
@@ -54,8 +60,11 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	//Getting hashed password from db using username
 	var hash string
+
 	stmt := "SELECT password FROM users WHERE username = $1"
+
 	row := db.QueryRow(stmt, username)
+	
 	err = row.Scan(&hash)
 
 	if err != nil {
@@ -357,7 +366,55 @@ func verifyEmail(w http.ResponseWriter, r *http.Request) {
 
 //Change password handler
 func changePassword(w http.ResponseWriter, r *http.Request) {
+	//Password var
+	var creds PasswordChangeCredentials
+
+	//Decode request's body into creds var
+	err := json.NewDecoder(r.Body).Decode(&creds)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	username 	:= creds.Username
+	password 	:= creds.Password
+	newPassword := creds.NewPassword
+
+	var dbPassword string
+	stmt := "SELECT password FROM users WHERE username = $1"
+	row := db.QueryRow(stmt, username)
+	err = row.Scan(&dbPassword)
+
+	if err != nil {
+		fmt.Println("No such user")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//Compare hashed password from db and password from user input
+	err = bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(password))
+
+	if err != nil {
+		fmt.Println("Passwords doesn't match")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	stmt = "UPDATE users SET password = $1 WHERE username = $2"
+	_, err = db.Exec(stmt, hash, username)
 	
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func isValidEmail(email string) bool {
