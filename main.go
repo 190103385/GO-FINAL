@@ -6,19 +6,19 @@ import (
 	"log"
 	"net/http"
 
+	controller "github.com/190103385/GO-FINAL.git/controller"
+	"github.com/190103385/GO-FINAL.git/repository"
 	_ "github.com/lib/pq"
 )
 
 //DB credentials
 const(
-	host     = "localhost"
+	host     = "database"
 	port     =  5432
 	user     = "postgres"
 	password = "postgreadmin"
 	dbname   = "go_final"
 )
-
-var db *sql.DB
 
 func main() {
 	//DB connection establishing
@@ -28,28 +28,26 @@ func main() {
 
 	var err error
 
-	db, err = sql.Open("postgres", psqlconn)
+	repository.DB, err = sql.Open("postgres", psqlconn)
 	
 	if err != nil {
   		panic(err)
 	}
 	
-	defer db.Close()
+	defer repository.DB.Close()
 
-	err = db.Ping()
+	err = repository.DB.Ping()
 	if err != nil {
 		panic(err)
 	}
 
+	repository.DB.Exec("CREATE TABLE users (id serial, username text NOT NULL, password text NOT NULL, email text NOT NULL, is_valid boolean NOT NULL DEFAULT false, verification_code text, PRIMARY KEY (id))")
+	// repository.DB.Exec("DROP TABLE users")
+
 	fmt.Println("Connection established")
 
-	//Handlers
-	http.HandleFunc("/register", register)
-	http.HandleFunc("/login", login)
-	http.HandleFunc("/home", home)
-	http.HandleFunc("/refresh", refresh)
-	http.HandleFunc("/verifyEmail", verifyEmail)
-	http.HandleFunc("/changePass", changePassword)
+	//Building routes
+	controller.BuildRouters()
 
 	//Serve port 8080
 	log.Fatal(http.ListenAndServe(":8080", nil))
