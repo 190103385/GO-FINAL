@@ -41,8 +41,7 @@ func main() {
 		panic(err)
 	}
 
-	repository.DB.Exec("CREATE TABLE users (id serial, username text NOT NULL, password text NOT NULL, email text NOT NULL, is_valid boolean NOT NULL DEFAULT false, verification_code text, PRIMARY KEY (id))")
-	// repository.DB.Exec("DROP TABLE users")
+	repository.DB.Exec("CREATE TABLE IF NOT EXISTS users (id serial, username text NOT NULL, password text NOT NULL, email text NOT NULL, is_valid boolean NOT NULL DEFAULT false, verification_code text, PRIMARY KEY (id))")
 
 	fmt.Println("Connection established")
 
